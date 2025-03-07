@@ -7,6 +7,8 @@ import { Canvas } from "@react-three/fiber";
 import { Character } from "./components/Character";
 import { Map } from "./components/Map";
 import { Physics } from "@react-three/rapier";
+import { ThirdPersonCamera } from "./components/ThirdPersonCamera";
+import { AmbientLight } from "three";
 
 function App() {
   return (
@@ -20,7 +22,11 @@ function App() {
         ]}
       >
         <Canvas>
+          {/* <OrbitControls /> */}
+          <ambientLight />
+
           <PerspectiveCamera makeDefault position={[-10, 10, -10]} />
+          {/* <ThirdPersonCamera /> */}
           <OrbitControls />
           <Physics debug>
             <Map />
