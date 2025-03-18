@@ -15,8 +15,8 @@ export const ThirdPersonCamera: FunctionComponent = () => {
   const characterPositionV = useRef(new Vector3());
   const characterRotationQuat = useRef(new Quaternion());
 
-  const idealOffset = useRef(new Vector3(0, 5, -4));
-  const idealLookat = useRef(new Vector3(0, 0, 2));
+  const idealOffset = useRef(new Vector3(-0.5, 1.5, -3));
+  const idealLookat = useRef(new Vector3(0, 0.5, 2));
 
   const _v = useRef(new Vector3());
 
@@ -31,14 +31,14 @@ export const ThirdPersonCamera: FunctionComponent = () => {
       .copy(idealOffset.current)
       .applyQuaternion(rotation)
       .add(position);
-    cameraPosition.current.lerp(_v.current, delta);
+    cameraPosition.current.lerp(_v.current, delta * 4);
     cameraRef.current.position.copy(cameraPosition.current);
 
     _v.current
       .copy(idealLookat.current)
       .applyQuaternion(rotation)
       .add(position);
-    cameraLookAt.current.lerp(_v.current, 0);
+    cameraLookAt.current.lerp(_v.current, delta * 2);
     cameraRef.current.lookAt(cameraLookAt.current);
   });
 

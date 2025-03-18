@@ -1,4 +1,5 @@
 import {
+  Environment,
   KeyboardControls,
   OrbitControls,
   PerspectiveCamera,
@@ -8,7 +9,7 @@ import { Character } from "./components/Character";
 import { Map } from "./components/Map";
 import { Physics } from "@react-three/rapier";
 import { ThirdPersonCamera } from "./components/ThirdPersonCamera";
-import { AmbientLight } from "three";
+import Grass from "./components/Grass";
 
 function App() {
   return (
@@ -22,11 +23,11 @@ function App() {
         ]}
       >
         <Canvas>
-          {/* <OrbitControls /> */}
-          <ambientLight />
+          <Environment preset="forest" />
+          <Grass />
 
-          <PerspectiveCamera makeDefault position={[-10, 10, -10]} />
-          {/* <ThirdPersonCamera /> */}
+          {/* <PerspectiveCamera makeDefault position={[-7, 7, -7]} /> */}
+          <ThirdPersonCamera />
           <OrbitControls />
           <Physics debug>
             <Map />

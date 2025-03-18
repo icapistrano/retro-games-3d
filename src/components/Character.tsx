@@ -1,4 +1,4 @@
-import { Box, useKeyboardControls } from "@react-three/drei";
+import { useKeyboardControls } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import {
   CapsuleCollider,
@@ -14,7 +14,7 @@ export const Character: FunctionComponent<{
   runningSpeed?: number;
   walkingSpeed?: number;
   angularSpeed?: number;
-}> = ({ runningSpeed = 150, walkingSpeed = 100, angularSpeed = 200 }) => {
+}> = ({ runningSpeed = 300, walkingSpeed = 100, angularSpeed = 200 }) => {
   const [animation, setAnimation] = useState<Animation>("Idle");
 
   const setCharacterPosition = useCharacterStore(
@@ -57,9 +57,10 @@ export const Character: FunctionComponent<{
       if (forward || backward) {
         setAnimation("Running");
 
+        const speed = forward ? runningSpeed : walkingSpeed;
         if (forward) moveDir.current.add(forwardDir.current);
         if (backward) moveDir.current.sub(forwardDir.current);
-        moveDir.current.normalize().multiplyScalar(runningSpeed * delta);
+        moveDir.current.multiplyScalar(speed * delta);
 
         if (left) turnVelocity += angularSpeed * delta;
         if (right) turnVelocity -= angularSpeed * delta;
@@ -75,7 +76,8 @@ export const Character: FunctionComponent<{
 
       const { x, y, z } = moveDir.current;
       rb.current.setLinvel({ x, y, z }, true);
-      setCharacterPosition([x, y, z]);
+      const worldPos = rb.current.translation();
+      setCharacterPosition([worldPos.x, worldPos.y + 1, worldPos.z]);
 
       rb.current.setAngvel({ x: 0, y: turnVelocity, z: 0 }, true);
       const rotation = rb.current.rotation();
@@ -86,7 +88,6 @@ export const Character: FunctionComponent<{
   return (
     <RigidBody
       ref={rb}
-      position={[0, 1, 0]}
       colliders={false}
       enabledRotations={[false, true, false]} // Lock rotation on X and Z
     >
