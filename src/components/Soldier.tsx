@@ -1,4 +1,4 @@
-import { Line } from "@react-three/drei";
+import { Line, SpotLight } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import {
   FunctionComponent,
@@ -28,16 +28,16 @@ export const Soldier: FunctionComponent<{
 }> = ({
   position,
   fov = 45,
-  detectionRange = 4,
+  detectionRange = 7,
   patrolSpeed = 1,
-  chaseSpeed = 5,
+  chaseSpeed = 3.5,
   investigateTime = 43000,
 }) => {
   const charPos = useRef(new Vector3());
   const { characterPosition } = useCharacterStore();
 
   const [behaviour, setBehaviour] = useState<SoldierBehaviour>(
-    SoldierBehaviour.Investigate,
+    SoldierBehaviour.Patrol,
   );
 
   const soldierRef = useRef<Mesh>(null);
@@ -151,8 +151,6 @@ export const Soldier: FunctionComponent<{
   useFrame((_, delta) => {
     if (!soldierRef.current) return;
 
-    console.log(behaviour);
-
     charPos.current.fromArray(characterPosition);
     updatePosition(delta);
     updateVision(delta);
@@ -163,8 +161,8 @@ export const Soldier: FunctionComponent<{
       {/* AVATAR */}
       <mesh ref={soldierRef} position={position} rotation={[0, Math.PI / 2, 0]}>
         <boxGeometry args={[0.5, 1, 0.5]} />
-        <meshStandardMaterial color="red" transparent opacity={0.1} />
-        <axesHelper />
+        <meshStandardMaterial color="red" transparent opacity={0} />
+        {/* <axesHelper /> */}
       </mesh>
 
       {/* CONE */}

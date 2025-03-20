@@ -14,7 +14,7 @@ export const Character: FunctionComponent<{
   runningSpeed?: number;
   walkingSpeed?: number;
   angularSpeed?: number;
-}> = ({ runningSpeed = 300, walkingSpeed = 100, angularSpeed = 200 }) => {
+}> = ({ runningSpeed = 500, walkingSpeed = 100, angularSpeed = 200 }) => {
   const [animation, setAnimation] = useState<Animation>("Idle");
 
   const setCharacterPosition = useCharacterStore(

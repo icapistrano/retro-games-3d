@@ -1,8 +1,9 @@
 import * as THREE from "three";
 import { useMemo, useRef } from "react";
-import { InstancedMesh, Vector3 } from "three";
+import { Color, DoubleSide, InstancedMesh, Vector3 } from "three";
 import { useFrame } from "@react-three/fiber";
 import { useCharacterStore } from "../stores/characterStore";
+import CustomShaderMaterial from "three-custom-shader-material/vanilla";
 
 interface GrassProps {
   count?: number;
@@ -86,11 +87,16 @@ export default function Grass({
     baseBladeHeight: { value: bladeHeight },
     characterPosition: { value: new Vector3() },
     time: { value: 0 },
+    baseColor: { value: new Color("#2b5d34") },
+    topColor: { value: new Color("#74c365") },
   });
 
-  // Custom shader material with local tapering and gradient coloring
   const material = useMemo(() => {
-    return new THREE.ShaderMaterial({
+    const extendMaterial = new CustomShaderMaterial({
+      baseMaterial: THREE.MeshStandardMaterial,
+      uniforms: uniformsRef.current,
+      shadowSide: DoubleSide,
+      side: DoubleSide,
       vertexShader: `
       attribute vec3 instanceOffset;
       attribute float instanceRotation;
@@ -100,8 +106,7 @@ export default function Grass({
       uniform float time;
       uniform vec3 characterPosition;
       
-      varying float vInstanceHeight;
-      varying float vBladePositionY;
+      varying vec3 vWorldPosition;
       
       mat3 getYRotationMatrix(float angle) {
           float c = cos(angle);
@@ -114,85 +119,95 @@ export default function Grass({
       }
       
       void main() {
-          vInstanceHeight = instanceHeight;
-      
-          vec3 modifiedPosition = position;
-      
-          // Apply local height scaling
-          modifiedPosition.y *= instanceHeight;
-      
-          // Taper to create triangle mesh
-          float taper = 1.0 - modifiedPosition.y / (instanceHeight / 2.0);
-          modifiedPosition.x *= taper;
-          modifiedPosition.z *= taper;
-      
-          // Convert instance position to world space
-          vec3 worldBladePos = instanceOffset;
-      
-          // 🏃‍♂️ Character Interaction: Compute Push Direction 🏃‍♂️
-          float distToCharacter = length(worldBladePos.xz - characterPosition.xz);
-          float interactionRadius = 1.0; // Radius of influence
-          float pushStrength = 0.5;      // Strength of the effect
-          float pushEffect = smoothstep(interactionRadius, 0.0, distToCharacter); // Smooth falloff
-      
-          // Compute push direction in world space (grass moves away)
-          vec2 pushDirection = normalize(worldBladePos.xz - characterPosition.xz);
-      
-          // Convert push direction to local space using inverse rotation
-          float cosRot = cos(-instanceRotation);
-          float sinRot = sin(-instanceRotation);
-          vec2 localPushDirection = vec2(
-              cosRot * pushDirection.x - sinRot * pushDirection.y,
-              sinRot * pushDirection.x + cosRot * pushDirection.y
-          );
-      
-          // 🌿 Fix Stretching: Apply bending **only to the top**
-          float bendFactor = smoothstep(0.0, 1.0, modifiedPosition.y / instanceHeight); // Gradual effect
-          modifiedPosition.xz += localPushDirection * pushStrength * pushEffect * bendFactor;
-      
-          // 🌬️ Wind Effect
-          float windSpeed = 0.4;
-          float windStrength = 0.2;
-          float normalizedHeight = modifiedPosition.y / baseBladeHeight;
-          float smoothBend = smoothstep(0.0, 1.0, normalizedHeight);
-          float bendAmount = sin(instanceHeight * time * windSpeed + instanceOffset.y * 0.5) * windStrength * smoothBend;
-          modifiedPosition.z += bendAmount * 2.0;
-      
-          // Apply rotation using rotation matrix
-          modifiedPosition = getYRotationMatrix(instanceRotation) * modifiedPosition;
-      
-          // Apply instance position offset
-          modifiedPosition += instanceOffset;
-      
-          vBladePositionY = modifiedPosition.y;
-      
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(modifiedPosition, 1.0);
-      
-      
-        }
+        vec3 modifiedPosition = position;
+
+        // Apply local height scaling
+        modifiedPosition.y *= instanceHeight;
+
+        // Taper to create triangle mesh
+        float taper = baseBladeHeight - modifiedPosition.y / (instanceHeight / 2.0);
+        modifiedPosition.x *= taper;
+        modifiedPosition.z *= taper;
+    
+        // Convert instance position to world space
+        vec3 worldBladePos = instanceOffset;
+    
+        // 🏃‍♂️ Character Interaction: Compute Push Direction 🏃‍♂️
+        float distToCharacter = length(worldBladePos.xz - characterPosition.xz);
+        float interactionRadius = 1.0; // Radius of influence
+        float pushStrength = 0.5;      // Strength of the effect
+        float pushEffect = smoothstep(interactionRadius, 0.0, distToCharacter); // Smooth falloff
+    
+        // Compute push direction in world space (grass moves away)
+        vec2 pushDirection = normalize(worldBladePos.xz - characterPosition.xz);
+    
+        // Convert push direction to local space using inverse rotation
+        float cosRot = cos(-instanceRotation);
+        float sinRot = sin(-instanceRotation);
+        vec2 localPushDirection = vec2(
+            cosRot * pushDirection.x - sinRot * pushDirection.y,
+            sinRot * pushDirection.x + cosRot * pushDirection.y
+        );
+    
+        // 🌿 Fix Stretching: Apply bending **only to the top**
+        float bendFactor = smoothstep(0.0, 1.0, modifiedPosition.y / instanceHeight); // Gradual effect
+        modifiedPosition.xz += localPushDirection * pushStrength * pushEffect * bendFactor;
+    
+        // 🌬️ Wind Effect
+        float windSpeed = 0.4;
+        float windStrength = 0.2;
+        float normalizedHeight = modifiedPosition.y / baseBladeHeight;
+        float smoothBend = smoothstep(0.0, 1.0, normalizedHeight);
+        float bendAmount = sin(instanceHeight * time * windSpeed + instanceOffset.y * 0.5) * windStrength * smoothBend;
+        modifiedPosition.z += bendAmount * 2.0;
+    
+        // Apply rotation using rotation matrix
+        modifiedPosition = getYRotationMatrix(instanceRotation) * modifiedPosition;
+    
+        // Apply instance position offset
+        modifiedPosition += instanceOffset;
+
+        vWorldPosition = modifiedPosition;
+
+        csm_Position = modifiedPosition;
+      }
       `,
       fragmentShader: `
-        uniform float baseBladeHeight;
-        varying float vInstanceHeight;
-        varying float vBladePositionY;
+      uniform vec3 baseColor;
+      uniform vec3 topColor;
+      uniform vec3 characterPosition;
+      uniform float baseBladeHeight;
 
-        void main() {
-          // Calculate the color based on the height of the blade
-          float normalizedHeight = (vBladePositionY - 0.0) / 1.0; // Change 1.0 to maxHeight if necessary
+      varying vec3 vWorldPosition;
 
-          // Define color gradients for the bottom (darker) and top (lighter) of the blade
-          vec3 bottomColor = vec3(0.11, 0.2, 0.12); // Dark green at the bottom
-          vec3 topColor = vec3(0.51, 0.78, 0.52); // Light green at the top
-      
-          // Interpolate between bottom and top colors based on the normalized y position
-          vec3 color = mix(bottomColor, topColor, normalizedHeight);
-      
-          gl_FragColor = vec4(color, 1.0);
-        }
+      void main() {
+        // Calculate the color based on the height of the blade
+        float normalizedHeight = vWorldPosition.y / baseBladeHeight;
+
+        // Define color gradients for the bottom (darker) and top (lighter) of the blade
+        // vec3 bottomColor = vec3(0.11, 0.2, 0.12); // Dark green at the bottom
+        // vec3 topColor = vec3(0.51, 0.78, 0.52); // Light green at the top
+    
+        // Interpolate between bottom and top colors based on the normalized y position
+        float weight = 3.;
+        vec3 color = mix(baseColor, topColor, pow(normalizedHeight, weight));
+
+        // Calculate distance from grass blade to the flashlight position
+        float dist = distance(vWorldPosition.xz, characterPosition.xz);
+
+        float flashlightRadius = 5.0;
+        float flashlightIntensity = 2.;
+
+        // Flashlight effect: stronger in the center, fades out smoothly
+        float lightFactor = smoothstep(flashlightRadius, 0.0, dist) * flashlightIntensity;
+        // color *= max(lightFactor, 1.);
+
+        csm_DiffuseColor = vec4(color, 1.0);
+      }
       `,
-      side: THREE.DoubleSide,
-      uniforms: uniformsRef.current,
     });
+
+    return extendMaterial;
   }, [bladeHeight]);
 
   useFrame(({ clock }) => {
@@ -202,10 +217,10 @@ export default function Grass({
 
   return (
     <instancedMesh
+      receiveShadow
       ref={meshRef}
       args={[geometry, material, width * height]}
       frustumCulled={false}
-      // position={[0, 1, 0]}
     />
   );
 }

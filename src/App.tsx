@@ -3,6 +3,9 @@ import {
   KeyboardControls,
   OrbitControls,
   PerspectiveCamera,
+  Sky,
+  SpotLight,
+  Stars,
 } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { Character } from "./components/Character";
@@ -10,6 +13,8 @@ import { Map } from "./components/Map";
 import { Physics } from "@react-three/rapier";
 import { ThirdPersonCamera } from "./components/ThirdPersonCamera";
 import Grass from "./components/Grass";
+import { Color } from "three";
+import { Soldier } from "./components/Soldier";
 
 function App() {
   return (
@@ -22,16 +27,22 @@ function App() {
           { name: "right", keys: ["ArrowRight", "d", "D"] },
         ]}
       >
-        <Canvas>
-          <Environment preset="forest" />
+        <Canvas
+          shadows
+          onCreated={(state) => {
+            // Set the scene background to black
+            state.scene.background = new Color(0x000000);
+          }}
+        >
+          <ambientLight intensity={0.4} />
           <Grass />
-
-          {/* <PerspectiveCamera makeDefault position={[-7, 7, -7]} /> */}
+          <PerspectiveCamera makeDefault position={[-7, 7, -7]} />
           <ThirdPersonCamera />
-          <OrbitControls />
+          <OrbitControls zoomToCursor />
           <Physics debug>
             <Map />
             <Character />
+            <Soldier position={[0, 1, 10]} />
           </Physics>
         </Canvas>
       </KeyboardControls>

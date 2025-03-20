@@ -1,7 +1,13 @@
-import { Line } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { FunctionComponent, useMemo, useRef, useState } from "react";
-import { Vector3, Mesh, Group } from "three";
+import {
+  Vector3,
+  Mesh,
+  Group,
+  SpotLight as SpotLightType,
+  Object3D,
+} from "three";
+import { SpotLight, Line, Box } from "@react-three/drei";
 import { SoldierBehaviour } from "./Soldier";
 
 const up = new Vector3(0, 1, 0);
@@ -49,8 +55,13 @@ export const SoldierVision: FunctionComponent<{
   const soldierDir = useRef(new Vector3());
   const coneRef = useRef<Group>(null);
 
+  const soldierPosition = useRef(new Vector3());
+
+  const boxRef = useRef<Mesh>(null);
   const updateSoldierVision = (elapsedTime: number) => {
     if (!soldier || !coneRef.current) return;
+
+    soldierPosition.current.copy(soldier.position);
 
     soldier.getWorldDirection(soldierDir.current);
     lookAtPos.current.copy(soldier.position).add(soldierDir.current);
@@ -64,7 +75,7 @@ export const SoldierVision: FunctionComponent<{
         Math.sin(elapsedTime * oscillationSpeed) * amplitude,
       );
 
-      lookAtPos.current.add(oscillationOffset);
+      lookAtPos.current.add(oscillationOffset).multiplyScalar(1.5);
     }
 
     coneRef.current.position.copy(soldier.position);
@@ -90,19 +101,35 @@ export const SoldierVision: FunctionComponent<{
     return radians <= fov / 2;
   };
 
+  const obj = useRef(new Object3D());
+  const spotLightRef = useRef<SpotLightType>(null);
+
   useFrame((root) => {
     updateSoldierVision(root.clock.elapsedTime);
     const isPlayerDetected = detectPlayer();
 
     setIsDetected(isPlayerDetected);
     setFovColor(isPlayerDetected ? "red" : "blue");
+
+    // update spotlight
+    if (spotLightRef.current) {
+      spotLightRef.current.position.copy(soldierPosition.current);
+      spotLightRef.current.target.position.copy(lookAtPos.current); // Ensure the spotlight targets the same direction
+    }
   });
 
   return (
     <group>
-      <group ref={coneRef} position={[0, 1, 0]}>
+      <SpotLight
+        ref={spotLightRef}
+        target={obj.current}
+        distance={detectionRange}
+        intensity={20}
+        decay={0}
+        angle={fov / 2}
+      />
+      <group ref={coneRef} position={[0, 1, 0]} visible={false}>
         <Line points={points} color={fovColor} lineWidth={5} />
-
         <Line
           points={[
             origin,
@@ -115,7 +142,6 @@ export const SoldierVision: FunctionComponent<{
           color={fovColor}
           lineWidth={5}
         />
-
         <Line
           points={[
             origin,
